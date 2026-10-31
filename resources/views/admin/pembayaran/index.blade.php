@@ -3,201 +3,385 @@
 @section('title', 'Daftar Pembayaran | Admin')
 
 @section('content')
+
+@if(session('error'))
+<div class="alert alert-danger">
+    {{ session('error') }}
+</div>
+@endif
+
+@if(session('success'))
+<div class="alert alert-success">
+    {{ session('success') }}
+</div>
+@endif
+
+
+{{-- ===================================================== --}}
+{{-- PEMBAYARAN PENDING --}}
+{{-- ===================================================== --}}
+
 <div class="card shadow mb-4">
+
     <div class="card-header py-3">
-        <h5 class="m-0 font-weight-bold text-primary">Pembayaran Belum Valid</h5>
-        <div class="d-flex justify-content-end mb-3">
-        </div>
+        <h6 class="m-0 font-weight-bold text-primary">
+            Pembayaran Belum Divalidasi
+        </h6>
     </div>
+
     <div class="card-body">
+
         <div class="table-responsive">
-            @if ($belumvalid->count() > 0)
-            <table class="table table-bordered" id="dataTableBelumValid" width="100%" cellspacing="0">
+
+            <table class="table table-bordered" width="100%" cellspacing="0">
+
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Nomor Tagihan</th>
-                        <th>Nomor Bukti Pembayaran</th>
+                        <th>No</th>
                         <th>Nama</th>
-                        <th>Lomba</th>
-                        <th>Total Tagihan</th>
-                        <th>Tanggal Upload</th>
+                        <th>Sekolah</th>
+                        <th>Jenis Pendaftaran</th>
+                        <th>Jumlah</th>
+                        <th>Bukti Pembayaran</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    @foreach ($belumvalid as $item)
+
+                    @forelse($belumvalid as $payment)
+
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
-                        <td>{{ $item->nomor_tagihan }}</td>
-                        <td>{{ $item->nomor_bukti_pembayaran }}</td>
-                        <td>{{ $item->nama }}</td>
-                        <td>{{ $item->lomba }}</td>
-                        <td>{{ $item->total_tagihan }}</td>
-                        <td>{{ $item->tanggal_upload }}</td>
-                        <td class="text-center d-flex justify-content-center gap-5">
-                            <a href="{{ asset('storage/bukti_pembayaran/' . $item->bukti_pembayaran) }}" target="_blank"
-                                class="btn btn-sm btn-info text-white me-2">
-                                <i class="fa-solid fa-eye"></i>
-                            </a>
-                            <button class="btn btn-sm btn-primary switch-validasi me-2" data-id="{{ $item->id }}">
-                                <i class="fa-solid fa-check"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger"
-                                onclick="confirmDelete({{ $item->id }})">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                            <form id="delete-form-{{ $item->id }}" action="{{ route('tagihan.destroy', $item->id) }}"
-                                method="POST" style="display: none;">
+
+                        <td>
+                            {{ $loop->iteration }}
+                        </td>
+
+                        <td>
+                            {{ $payment['name'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            {{ $payment['school'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            {{ $payment['type'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            Rp {{ number_format($payment['amount'] ?? 0, 0, ',', '.') }}
+                        </td>
+
+                        <td>
+
+                            @if(!empty($payment['proofUrl']))
+
+                                <a
+                                    href="{{ $payment['proofUrl'] }}"
+                                    target="_blank"
+                                    class="btn btn-sm btn-info"
+                                >
+                                    Lihat Bukti
+                                </a>
+
+                            @else
+
+                                <span class="text-muted">
+                                    Tidak ada bukti
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                        <td>
+
+                            {{-- VALIDASI --}}
+
+                            <form
+                                action="{{ route('pembayaran.validbukti', $payment['id']) }}"
+                                method="POST"
+                                style="display:inline-block;"
+                            >
+
                                 @csrf
-                                @method('DELETE')
+                                @method('PATCH')
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-sm btn-success"
+                                    onclick="return confirm('Yakin ingin memverifikasi pembayaran ini?')"
+                                >
+                                    Validasi
+                                </button>
+
                             </form>
+
+
+                            {{-- TOLAK --}}
+
+                            <form
+                                action="{{ url('admin/pembayaran/tolak/' . $payment['id']) }}"
+                                method="POST"
+                                style="display:inline-block;"
+                            >
+
+                                @csrf
+                                @method('PATCH')
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Yakin ingin menolak pembayaran ini?')"
+                                >
+                                    Tolak
+                                </button>
+
+                            </form>
+
+                        </td>
+
+                    </tr>
+
+                    @empty
+
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            Tidak ada pembayaran yang menunggu validasi.
                         </td>
                     </tr>
-                    @endforeach
+
+                    @endforelse
+
                 </tbody>
+
             </table>
-            @else
-            <div class="alert alert-warning">Belum ada pembayaran yang tersedia.</div>
-            @endif
+
         </div>
+
     </div>
+
 </div>
+
+
+
+{{-- ===================================================== --}}
+{{-- PEMBAYARAN VERIFIED --}}
+{{-- ===================================================== --}}
 
 <div class="card shadow mb-4">
+
     <div class="card-header py-3">
-        <h5 class="m-0 font-weight-bold text-primary">Pembayaran Sudah Valid</h5>
-        <div class="d-flex justify-content-end mb-3">
-        </div>
+        <h6 class="m-0 font-weight-bold text-success">
+            Pembayaran Terverifikasi
+        </h6>
     </div>
+
     <div class="card-body">
+
         <div class="table-responsive">
-            @if ($valid->count() > 0)
-            <table class="table table-bordered" id="dataTableValid" width="100%" cellspacing="0">
+
+            <table class="table table-bordered" width="100%" cellspacing="0">
+
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Nomor Tagihan</th>
-                        <th>Nomor Bukti Pembayaran</th>
+                        <th>No</th>
                         <th>Nama</th>
-                        <th>Lomba</th>
-                        <th>Total Tagihan</th>
-                        <th>Tanggal Upload</th>
-                        <th>Aksi</th>
+                        <th>Sekolah</th>
+                        <th>Jenis Pendaftaran</th>
+                        <th>Jumlah</th>
+                        <th>Bukti Pembayaran</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    @foreach ($valid as $item)
+
+                    @forelse($valid as $payment)
+
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
-                        <td>{{ $item->nomor_tagihan }}</td>
-                        <td>{{ $item->nomor_bukti_pembayaran }}</td>
-                        <td>{{ $item->nama }}</td>
-                        <td>{{ $item->lomba }}</td>
-                        <td>{{ $item->total_tagihan }}</td>
-                        <td>{{ $item->tanggal_upload }}</td>
-                        <td class="text-center d-flex justify-content-center gap-5">
-                            <button class="btn btn-sm btn-primary switch-validasi me-2" data-id="{{ $item->id }}">
-                                <i class="fa-solid fa-check"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger"
-                                onclick="confirmDelete({{ $item->id }})">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                            <form id="delete-form-{{ $item->id }}" action="{{ route('tagihan.destroy', $item->id) }}"
-                                method="POST" style="display: none;">
-                                @csrf
-                                @method('DELETE')
-                            </form>
-                            <a href="{{ route('tagihan.cetak', $item->id) }}" target="_blank"
-                                class="btn btn-sm btn-primary">
-                                <i class="fa-solid fa-print"></i>
-                            </a>
+
+                        <td>
+                            {{ $loop->iteration }}
+                        </td>
+
+                        <td>
+                            {{ $payment['name'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            {{ $payment['school'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            {{ $payment['type'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            Rp {{ number_format($payment['amount'] ?? 0, 0, ',', '.') }}
+                        </td>
+
+                        <td>
+
+                            @if(!empty($payment['proofUrl']))
+
+                                <a
+                                    href="{{ $payment['proofUrl'] }}"
+                                    target="_blank"
+                                    class="btn btn-sm btn-info"
+                                >
+                                    Lihat Bukti
+                                </a>
+
+                            @else
+
+                                <span class="text-muted">
+                                    Tidak ada bukti
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge badge-success">
+                                TERVERIFIKASI
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+                    @empty
+
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            Belum ada pembayaran terverifikasi.
                         </td>
                     </tr>
-                    @endforeach
+
+                    @endforelse
+
                 </tbody>
+
             </table>
-            @else
-            <div class="alert alert-warning">Belum ada pembayaran yang tersedia.</div>
-            @endif
+
         </div>
+
     </div>
+
 </div>
 
-<script>
-$(document).ready(function() {
-    $('.switch-validasi').on('click', function() {
-        let id = $(this).data('id');
 
-        Swal.fire({
-            title: "Apakah Anda yakin?",
-            text: "Status validasi akan diubah!",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, Ubah!",
-            cancelButtonText: "Batal"
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '/admin/pembayaran/switch-validasi/' + id,
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}' // Kirim CSRF token
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Notifikasi sukses
-                            Swal.fire({
-                                title: "Berhasil!",
-                                text: "Status validasi telah diubah menjadi " +
-                                    response.status,
-                                icon: "success",
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                location
-                                    .reload(); // Reload halaman setelah sukses
-                            });
-                        }
-                    },
-                    error: function(xhr) {
-                        Swal.fire({
-                            title: "Gagal!",
-                            text: "Terjadi kesalahan saat mengubah status validasi.",
-                            icon: "error"
-                        });
-                    }
-                });
-            }
-        });
-    });
-});
 
-function confirmDelete(id) {
-    Swal.fire({
-        title: "Apakah Anda yakin?",
-        text: "Data akan dihapus secara permanen!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#d33",
-        cancelButtonColor: "#3085d6",
-        confirmButtonText: "Ya, Hapus!",
-        cancelButtonText: "Batal"
-    }).then((result) => {
-        if (result.isConfirmed) {
-            document.getElementById('delete-form-' + id).submit();
-        }
-    });
-}
+{{-- ===================================================== --}}
+{{-- PEMBAYARAN DITOLAK --}}
+{{-- ===================================================== --}}
 
-$(document).ready(function() {
-    $('#dataTableBelumValid').DataTable();
-    $('#dataTableValid').DataTable();
+<div class="card shadow mb-4">
 
-    // script switch-validasi tetap sama
-});
-</script>
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-danger">
+            Pembayaran Ditolak
+        </h6>
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered" width="100%" cellspacing="0">
+
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Nama</th>
+                        <th>Sekolah</th>
+                        <th>Jenis Pendaftaran</th>
+                        <th>Jumlah</th>
+                        <th>Bukti Pembayaran</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    @forelse($ditolak as $payment)
+
+                    <tr>
+
+                        <td>
+                            {{ $loop->iteration }}
+                        </td>
+
+                        <td>
+                            {{ $payment['name'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            {{ $payment['school'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            {{ $payment['type'] ?? '-' }}
+                        </td>
+
+                        <td>
+                            Rp {{ number_format($payment['amount'] ?? 0, 0, ',', '.') }}
+                        </td>
+
+                        <td>
+
+                            @if(!empty($payment['proofUrl']))
+
+                                <a
+                                    href="{{ $payment['proofUrl'] }}"
+                                    target="_blank"
+                                    class="btn btn-sm btn-info"
+                                >
+                                    Lihat Bukti
+                                </a>
+
+                            @else
+
+                                <span class="text-muted">
+                                    Tidak ada bukti
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge badge-danger">
+                                DITOLAK
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+                    @empty
+
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            Belum ada pembayaran yang ditolak.
+                        </td>
+                    </tr>
+
+                    @endforelse
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
 @endsection

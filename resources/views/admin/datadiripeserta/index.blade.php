@@ -1,149 +1,454 @@
 @extends('layout.admin')
 
-@section('title', 'Data Peserta | Admin')
+@section('title', 'Data Peserta Online | Admin')
 
 @section('content')
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h5 class="m-0 font-weight-bold text-primary">Data Peserta Valid</h5>
-        <div class="d-flex justify-content-end mb-3">
-            <a href="{{ route('export.download') }}" class="btn btn-success">
-                <i class="fa-solid fa-print"></i> Print Data Peserta
-            </a>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            @if ($dataValid->count() > 0)
-            <table class="table table-bordered" id="dataTableValid">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Nomor Peserta</th>
-                        <th>Nama</th>
-                        <th>Nomor HP</th>
-                        <th>Sekolah</th>
-                        <th>Mapel</th>
-                        <th>Jenis Daftar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($dataValid as $item)
-                    <tr>
-                        <td class="text-center">{{ $loop->iteration }}</td>
-                        <td>{{ $item->nomor_peserta }}</td>
-                        <td>{{ $item->nama_lengkap }}</td>
-                        <td>
-                            <a href="https://wa.me/{{ $item->nomor_hp }}" target="_blank">
-                                {{ $item->nomor_hp }}
-                            </a>
-                        </td>
-                        <td>{{ $item->sekolah }}</td>
-                        <td>{{ optional($item->tagihan)->lomba ?? 'Tidak ada mapel' }}</td>
-                        <td>
-                            @if ($item->jenis_daftar == 'online')
-                            <span class="badge badge-info"><i class="fas fa-globe"></i> Daftar Online</span>
-                            @elseif ($item->jenis_daftar == 'offline')
-                            <span class="badge badge-success"><i class="fas fa-building"></i> Daftar Offline</span>
-                            @else
-                            <span class="badge badge-secondary"><i class="fas fa-users"></i> Daftar Kolektif</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            @else
-            <div class="alert alert-warning">Belum ada data diri peserta yang tersedia.</div>
-            @endif
-        </div>
-    </div>
-</div>
 
 <div class="card shadow mb-4">
+
     <div class="card-header py-3">
-        <h5 class="m-0 font-weight-bold text-primary">Data Peserta Belum Valid</h5>
+        <h5 class="m-0 font-weight-bold text-primary">
+            Data Peserta Online
+        </h5>
     </div>
+
     <div class="card-body">
-        <div class="table-responsive">
-            @if ($dataTidakvalid->count() > 0)
-            <table class="table table-bordered" id="dataTableTidakValid">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Nomor Peserta</th>
-                        <th>Nama</th>
-                        <th>Nomor HP</th>
-                        <th>Sekolah</th>
-                        <th>Mapel</th>
-                        <th>Jenis Daftar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($dataTidakvalid as $item)
-                    <tr>
-                        <td class="text-center">{{ $loop->iteration }}</td>
-                        <td>{{ $item->nomor_peserta }}</td>
-                        <td>{{ $item->nama_lengkap }}</td>
-                        <td>
-                            <a href="https://wa.me/{{ $item->nomor_hp }}" target="_blank">
-                                {{ $item->nomor_hp }}
-                            </a>
-                        </td>
-                        <td>{{ $item->sekolah }}</td>
-                        <td>{{ optional($item->tagihan)->lomba ?? 'Tidak ada mapel' }}</td>
-                        <td>
-                            @if ($item->jenis_daftar == 'online')
-                            <span class="badge badge-info"><i class="fas fa-globe"></i> Daftar Online</span>
-                            @elseif ($item->jenis_daftar == 'offline')
-                            <span class="badge badge-success"><i class="fas fa-building"></i> Daftar Offline</span>
-                            @else
-                            <span class="badge badge-secondary"><i class="fas fa-users"></i> Daftar Kolektif</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            @else
-            <div class="alert alert-warning">Belum ada data diri peserta yang tersedia.</div>
-            @endif
+
+        {{-- ===================================================== --}}
+        {{-- PENDING --}}
+        {{-- ===================================================== --}}
+
+        <div class="card mb-4 border-left-warning">
+
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    Pembayaran Menunggu Verifikasi
+                </h6>
+            </div>
+
+            <div class="card-body">
+
+                @if ($dataPending->count() > 0)
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover"
+                               id="dataTablePending"
+                               width="100%">
+
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama</th>
+                                    <th>Email</th>
+                                    <th>Sekolah</th>
+                                    <th>Bidang</th>
+                                    <th>Jenis</th>
+                                    <th>Nominal</th>
+                                    <th>Bukti</th>
+                                    <th>Status</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                @foreach ($dataPending as $item)
+
+                                    <tr>
+
+                                        <td>
+                                            {{ $loop->iteration }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->name }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->email }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->school }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->field }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->type }}
+                                        </td>
+
+                                        <td>
+                                            @if ($item->payment_amount)
+                                                Rp {{ number_format($item->payment_amount, 0, ',', '.') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            @if ($item->proof_url)
+
+                                                <a href="{{ $item->proof_url }}"
+                                                   target="_blank"
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                    Lihat
+                                                </a>
+
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            <span class="badge badge-warning">
+                                                PENDING
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            {{ $item->created_at }}
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                @else
+
+                    <div class="alert alert-success mb-0">
+                        Tidak ada pembayaran yang menunggu verifikasi.
+                    </div>
+
+                @endif
+
+            </div>
+
         </div>
+
+
+        {{-- ===================================================== --}}
+        {{-- VERIFIED --}}
+        {{-- ===================================================== --}}
+
+        <div class="card mb-4 border-left-success">
+
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-success">
+                    Peserta Terverifikasi
+                </h6>
+            </div>
+
+            <div class="card-body">
+
+                @if ($dataValid->count() > 0)
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover"
+                               id="dataTableValid"
+                               width="100%">
+
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama</th>
+                                    <th>Email</th>
+                                    <th>Sekolah</th>
+                                    <th>Bidang</th>
+                                    <th>Jenis</th>
+                                    <th>Nominal</th>
+                                    <th>Bukti</th>
+                                    <th>Status</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                @foreach ($dataValid as $item)
+
+                                    <tr>
+
+                                        <td>
+                                            {{ $loop->iteration }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->name }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->email }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->school }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->field }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->type }}
+                                        </td>
+
+                                        <td>
+                                            @if ($item->payment_amount)
+                                                Rp {{ number_format($item->payment_amount, 0, ',', '.') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            @if ($item->proof_url)
+
+                                                <a href="{{ $item->proof_url }}"
+                                                   target="_blank"
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                    Lihat
+                                                </a>
+
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            <span class="badge badge-success">
+                                                VERIFIED
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            {{ $item->created_at }}
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                @else
+
+                    <div class="alert alert-warning mb-0">
+                        Belum ada peserta yang terverifikasi.
+                    </div>
+
+                @endif
+
+            </div>
+
+        </div>
+
+
+        {{-- ===================================================== --}}
+        {{-- REJECTED --}}
+        {{-- ===================================================== --}}
+
+        <div class="card mb-4 border-left-danger">
+
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-danger">
+                    Pembayaran Ditolak
+                </h6>
+            </div>
+
+            <div class="card-body">
+
+                @if ($dataRejected->count() > 0)
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover"
+                               id="dataTableRejected"
+                               width="100%">
+
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama</th>
+                                    <th>Email</th>
+                                    <th>Sekolah</th>
+                                    <th>Bidang</th>
+                                    <th>Jenis</th>
+                                    <th>Nominal</th>
+                                    <th>Bukti</th>
+                                    <th>Status</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                @foreach ($dataRejected as $item)
+
+                                    <tr>
+
+                                        <td>
+                                            {{ $loop->iteration }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->name }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->email }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->school }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->field }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->type }}
+                                        </td>
+
+                                        <td>
+                                            @if ($item->payment_amount)
+                                                Rp {{ number_format($item->payment_amount, 0, ',', '.') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            @if ($item->proof_url)
+
+                                                <a href="{{ $item->proof_url }}"
+                                                   target="_blank"
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                    Lihat
+                                                </a>
+
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            <span class="badge badge-danger">
+                                                REJECTED
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            {{ $item->created_at }}
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                @else
+
+                    <div class="alert alert-success mb-0">
+                        Tidak ada pembayaran yang ditolak.
+                    </div>
+
+                @endif
+
+            </div>
+
+        </div>
+
     </div>
+
 </div>
 
 
 <script>
-$(document).ready(function() {
-    $('#dataTableValid').DataTable({
-        pageLength: 10,
-        lengthMenu: [10, 20, 50, 100],
-        language: {
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ data",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            paginate: {
-                previous: "Sebelumnya",
-                next: "Berikutnya"
-            },
-            zeroRecords: "Tidak ditemukan data yang cocok",
-        }
-    });
 
-    $('#dataTableTidakValid').DataTable({
-        pageLength: 10,
-        lengthMenu: [10, 20, 50, 100],
-        language: {
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ data",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            paginate: {
-                previous: "Sebelumnya",
-                next: "Berikutnya"
-            },
-            zeroRecords: "Tidak ditemukan data yang cocok",
-        }
-    });
+$(document).ready(function () {
+
+    if ($('#dataTablePending').length) {
+
+        $('#dataTablePending').DataTable({
+            pageLength: 10,
+            language: {
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ data",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                zeroRecords: "Tidak ditemukan data yang cocok",
+                paginate: {
+                    previous: "Sebelumnya",
+                    next: "Berikutnya"
+                }
+            }
+        });
+
+    }
+
+
+    if ($('#dataTableValid').length) {
+
+        $('#dataTableValid').DataTable({
+            pageLength: 10,
+            language: {
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ data",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                zeroRecords: "Tidak ditemukan data yang cocok",
+                paginate: {
+                    previous: "Sebelumnya",
+                    next: "Berikutnya"
+                }
+            }
+        });
+
+    }
+
+
+    if ($('#dataTableRejected').length) {
+
+        $('#dataTableRejected').DataTable({
+            pageLength: 10,
+            language: {
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ data",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                zeroRecords: "Tidak ditemukan data yang cocok",
+                paginate: {
+                    previous: "Sebelumnya",
+                    next: "Berikutnya"
+                }
+            }
+        });
+
+    }
+
 });
+
 </script>
+
 @endsection

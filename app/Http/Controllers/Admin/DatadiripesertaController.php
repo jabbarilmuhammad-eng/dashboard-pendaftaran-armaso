@@ -4,97 +4,398 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\DataDiri;
-use App\Models\Tagihan;
-use App\Models\Infolomba;
 
 class DatadiripesertaController extends Controller
 {
-    //daftar online
+    /*
+    |--------------------------------------------------------------------------
+    | DAFTAR ONLINE
+    |--------------------------------------------------------------------------
+    */
+
     public function index()
     {
-        $pesertaOnline =DataDiri::with('tagihan')->where('jenis_daftar', 'online')->get();
+        $registrations = DB::connection('neon')
+            ->table('registration as r')
+            ->leftjoin('user as u', 'u.id', '=', 'r.userId')
+            ->leftJoin('payment as p', 'p.registrationId', '=', 'r.id')
+            ->leftJoin('participant as pt', 'pt.registrationId', '=', 'r.id')
+            ->select(
+                'r.id as registration_id',
+                'r.type',
+                'r.createdAt',
+                'u.name as user_name',
+                'u.email as user_email',
+                'pt.fullName as participant_name',
+                'pt.school as school',
+                'pt.field as field',
+                'p.status as payment_status',
+                'p.proofUrl as proof_url',
+                'p.amount as payment_amount'
+            )
+            ->whereIn('r.type', [
+                'SELF',
+                'COLLECTIVE',
+            ])
+            ->orderByDesc('r.createdAt')
+            ->get();
 
-        return view('admin.datadiripeserta.online.index', compact('pesertaOnline'));
+        $dataValid = collect();
+        $dataPending = collect();
+        $dataRejected = collect();
+
+        foreach ($registrations as $registration) {
+            $data = (object) [
+                'registration_id' =>
+                    $registration->registration_id,
+
+                'name' =>
+                    $registration->participant_name
+                    ?? $registration->user_name,
+
+                'email' =>
+                    $registration->user_email,
+
+                'school' =>
+                    $registration->school ?? '-',
+
+                'field' =>
+                    $registration->field ?? '-',
+
+                'type' =>
+                    $registration->type,
+
+                'payment_status' =>
+                    $registration->payment_status ?? 'PENDING',
+
+                'proof_url' =>
+                    $registration->proof_url,
+
+                'payment_amount' =>
+                    $registration->payment_amount,
+
+                'created_at' =>
+                    $registration->createdAt,
+            ];
+
+            if ($data->payment_status === 'VERIFIED') {
+                $dataValid->push($data);
+            } elseif ($data->payment_status === 'REJECTED') {
+                $dataRejected->push($data);
+            } else {
+                $dataPending->push($data);
+            }
+        }
+
+        return view(
+            'admin.datadiripeserta.online.index',
+            compact(
+                'dataValid',
+                'dataPending',
+                'dataRejected'
+            )
+        );
     }
 
-    public function switchValidasi($id)
-    {
-        // Ambil data peserta berdasarkan ID
-        $peserta = Datadiri::findOrFail($id);
 
-        // Toggle status validasi (valid / belum valid)
-        $peserta->status_data = $peserta->status_data === 'valid' ? 'belum_valid' : 'valid';
-        $peserta->save();
-
-        // Kembalikan response JSON untuk AJAX
-        return response()->json(['success' => true, 'status' => $peserta->status_data]);
-    }
-
-    public function show($id)
-    {
-        // Ambil data peserta berdasarkan ID
-        $peserta = DataDiri::findOrFail($id);
-
-        return view('admin.datadiripeserta.online.show', compact('peserta'));
-    }
-
-    public function edit($id)
-    {
-        // Ambil data peserta berdasarkan ID
-        $peserta = DataDiri::findOrFail($id);
-
-        return view('admin.datadiripeserta.online.edit', compact('peserta'));
-    }
-
-    public function update(Request $request, $id)
-    {
-        $peserta = DataDiri::findOrFail($id);
-
-        // Validasi input
-        $request->validate([
-            'nisn' => 'required|numeric|unique:datadiri,nisn,' . $peserta->id,
-            'nama_lengkap' => 'required|string|max:255',
-            'sekolah' => 'required|string|max:255',
-            'tempat_lahir' => 'required|string|max:255',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required|string',
-            'alamat' => 'required|string',
-            'nomor_hp' => 'required|string|max:15',
-        ]);
-
-        // Update data
-        $peserta->update($request->all());
-
-        return redirect()->route('online.show', $id)->with('success', 'Data berhasil diperbarui.');
-    }
-
-    public function destroy($id)
-    {
-        $peserta = DataDiri::findOrFail($id);
-
-        // Hapus semua tagihan terkait
-        $peserta->tagihan()->delete();
-
-        // Hapus peserta
-        $peserta->delete();
-
-        return redirect()->route('online.index')->with('success', 'Data berhasil dihapus.');
-    }
-
+    /*
+    |--------------------------------------------------------------------------
+    | SEMUA DATA PESERTA
+    |--------------------------------------------------------------------------
+    */
 
     public function semuaData()
     {
-        $dataValid = DataDiri::with('tagihan')
-            ->where('status_data', 'valid')
+        $registrations = DB::connection('neon')
+            ->table('registration as r')
+            ->leftjoin('user as u', 'u.id', '=', 'r.userId')
+            ->leftJoin('payment as p', 'p.registrationId', '=', 'r.id')
+            ->select(
+                'r.id as registration_id',
+                'r.type',
+                'r.createdAt',
+                'u.name as user_name',
+                'u.email as user_email',
+                'p.status as payment_status',
+                'p.proofUrl as proof_url',
+                'p.amount as payment_amount'
+            )
+            ->orderByDesc('r.createdAt')
             ->get();
 
-        $dataTidakvalid = DataDiri::with('tagihan')
-            ->where('status_data', 'belum_valid')
+        $dataValid = collect();
+        $dataPending = collect();
+        $dataRejected = collect();
+
+        foreach ($registrations as $registration) {
+            $participants = DB::connection('neon')
+                ->table('participant')
+                ->where(
+                    'registrationId',
+                    $registration->registration_id
+                )
+                ->get();
+
+            foreach ($participants as $participant) {
+                $data = (object) [
+                    'registration_id' =>
+                        $registration->registration_id,
+
+                    'name' =>
+                        $participant->fullName,
+
+                    'email' =>
+                        $registration->user_email,
+
+                    'school' =>
+                        $participant->school,
+
+                    'field' =>
+                        $participant->field,
+
+                    'type' =>
+                        $registration->type,
+
+                    'payment_status' =>
+                        $registration->payment_status ?? 'PENDING',
+
+                    'proof_url' =>
+                        $registration->proof_url,
+
+                    'payment_amount' =>
+                        $registration->payment_amount,
+
+                    'created_at' =>
+                        $registration->createdAt,
+                ];
+
+                if ($data->payment_status === 'VERIFIED') {
+                    $dataValid->push($data);
+                } elseif ($data->payment_status === 'REJECTED') {
+                    $dataRejected->push($data);
+                } else {
+                    $dataPending->push($data);
+                }
+            }
+
+            $team = DB::connection('neon')
+                ->table('team')
+                ->where(
+                    'registrationId',
+                    $registration->registration_id
+                )
+                ->first();
+
+            if ($team) {
+                $teamData = (object) [
+                    'registration_id' =>
+                        $registration->registration_id,
+
+                    'name' =>
+                        $team->name,
+
+                    'email' =>
+                        $registration->user_email,
+
+                    'school' =>
+                        $team->school,
+
+                    'field' =>
+                        'FUTSAL',
+
+                    'type' =>
+                        $registration->type,
+
+                    'payment_status' =>
+                        $registration->payment_status ?? 'PENDING',
+
+                    'proof_url' =>
+                        $registration->proof_url,
+
+                    'payment_amount' =>
+                        $registration->payment_amount,
+
+                    'created_at' =>
+                        $registration->createdAt,
+                ];
+
+                if ($teamData->payment_status === 'VERIFIED') {
+                    $dataValid->push($teamData);
+                } elseif ($teamData->payment_status === 'REJECTED') {
+                    $dataRejected->push($teamData);
+                } else {
+                    $dataPending->push($teamData);
+                }
+            }
+        }
+
+        return view(
+            'admin.datadiripeserta.index',
+            compact(
+                'dataValid',
+                'dataPending',
+                'dataRejected'
+            )
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DATA PESERTA FUTSAL
+    |--------------------------------------------------------------------------
+    */
+
+    public function futsal()
+    {
+        $registrations = DB::connection('neon')
+            ->table('registration as r')
+            ->leftjoin('user as u', 'u.id', '=', 'r.userId')
+            ->leftJoin('payment as p', 'p.registrationId', '=', 'r.id')
+            ->join('team as t', 't.registrationId', '=', 'r.id')
+            ->select(
+                'r.id as registration_id',
+                'r.type',
+                'r.createdAt',
+                'u.email as user_email',
+                't.id as team_id',
+                't.name as team_name',
+                't.school as school',
+                'p.id as payment_id',
+                'p.status as payment_status',
+                'p.proofUrl as proof_url',
+                'p.amount as payment_amount'
+            )
+            ->where('r.type', 'FUTSAL')
+            ->orderByDesc('r.createdAt')
             ->get();
 
-        $infolombas = Infolomba::all();
+        $dataPending = collect();
+        $dataValid = collect();
+        $dataRejected = collect();
 
-        return view('admin.datadiripeserta.index', compact('dataValid', 'dataTidakvalid', 'infolombas'));
+        foreach ($registrations as $registration) {
+
+            $totalMembers = DB::connection('neon')
+                ->table('teamMember')
+                ->where(
+                    'teamId',
+                    $registration->team_id
+                )
+                ->count();
+
+            $data = (object) [
+                'registration_id' =>
+                    $registration->registration_id,
+
+                'team_id' =>
+                    $registration->team_id,
+                
+                'payment_id' =>
+                    $registration->payment_id,
+
+                'team_name' =>
+                    $registration->team_name,
+
+                'email' =>
+                    $registration->user_email,
+
+                'school' =>
+                    $registration->school,
+
+                'total_members' =>
+                    $totalMembers,
+
+                'payment_status' =>
+                    $registration->payment_status ?? 'PENDING',
+
+                'proof_url' =>
+                    $registration->proof_url,
+
+                'payment_amount' =>
+                    $registration->payment_amount,
+
+                'created_at' =>
+                    $registration->createdAt,
+            ];
+
+            if ($data->payment_status === 'VERIFIED') {
+
+                $dataValid->push($data);
+
+            } elseif ($data->payment_status === 'REJECTED') {
+
+                $dataRejected->push($data);
+
+            } else {
+
+                $dataPending->push($data);
+            }
+        }
+
+        return view(
+            'admin.datadiripeserta.futsal.index',
+            compact(
+                'dataPending',
+                'dataValid',
+                'dataRejected'
+            )
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | KONFIRMASI PEMBAYARAN
+    |--------------------------------------------------------------------------
+    */
+
+    public function confirmPayment($registrationId)
+    {
+        DB::connection('neon')
+            ->table('payment')
+            ->where(
+                'registrationId',
+                $registrationId
+            )
+            ->update([
+                'status' => 'VERIFIED',
+            ]);
+
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Pembayaran berhasil dikonfirmasi!'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TOLAK PEMBAYARAN
+    |--------------------------------------------------------------------------
+    */
+
+    public function rejectPayment($registrationId)
+    {
+        DB::connection('neon')
+            ->table('payment')
+            ->where(
+                'registrationId',
+                $registrationId
+            )
+            ->update([
+                'status' => 'REJECTED',
+            ]);
+
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Pembayaran berhasil ditolak!'
+            );
     }
 }

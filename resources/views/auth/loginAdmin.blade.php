@@ -1,6 +1,6 @@
 @extends('layout.auth')
 
-@section('title', 'Login Admin | ' . $settingweb->nama_website)
+@section('title', 'Login Admin | ' . ($settingweb?->nama_website ?? 'ARMASO'))
 
 @section('content')
     {{-- Alert Notifications --}}
